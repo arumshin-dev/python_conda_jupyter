@@ -1,1 +1,62 @@
+# 📘 Jupyter Notebook 관리
+# Jupyter Notebook 파일은 Git LFS로 관리
+# *.ipynb filter=lfs diff=lfs merge=lfs -text
+# 파일만 LFS로 관리되고, 나머지 .ipynb 파일은 일반 Git 방식으로 처리
+# 특정 대용량 노트북만 Git LFS로 관리
+codeit/2_6_1_Faster_R_CNN_공유.ipynb filter=lfs diff=lfs merge=lfs -text
+# 나머지 노트북은 텍스트로 관리 + 줄바꿈 LF 고정
 *.ipynb text eol=lf
+# .ipynb 파일을 텍스트로 다루되, 줄바꿈을 LF로 고정해서 Mac/Windows 간 충돌을 방지
+# 🧾 텍스트 파일 줄바꿈 LF 고정
+*.py text eol=lf
+*.md text eol=lf
+*.csv text eol=lf
+*.txt text eol=lf
+# 🧠 모델 및 체크포인트 파일은 Git LFS로 관리
+*.h5 filter=lfs diff=lfs merge=lfs -text
+*.pt filter=lfs diff=lfs merge=lfs -text
+*.model filter=lfs diff=lfs merge=lfs -text
+# 🖼️ 이미지 및 바이너리 파일은 diff 제외
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.zip binary
+*.tar.gz binary
+*.pdf binary
+*.docx binary
+*.pptx binary
+*.xlsx binary
+# 🎵 미디어 파일
+*.mp4 binary
+*.mp3 binary
+*.wav binary
+*.avi binary
+*.mov binary
+*.flv binary
+*.mkv binary
+*.ogg binary
+# 🔤 폰트 파일
+*.otf binary
+*.ttf binary
+*.woff binary
+*.woff2 binary
+*.eot binary
+# ⚙️ 실행/라이브러리/컴파일 파일
+*.exe binary
+*.dll binary
+*.bin binary
+*.iso binary
+*.lib binary
+*.a binary
+*.o binary
+*.class binary
+*.jar binary
+*.war binary
+*.ear binary
+# 🎨 디자인 파일
+*.psd binary
+*.ai binary
+*.xcf binary
+*.sketch binary
+*.swf binary
