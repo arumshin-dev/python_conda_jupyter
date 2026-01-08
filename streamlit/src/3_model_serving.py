@@ -34,8 +34,16 @@ if st.button("분석하기"):
             st.metric("감성 결과", label)
         with col2:
             st.metric("확신도 (Score)", f"{score:.2%}")
+            st.progress(score) # progress bar 시각화
             
-        if label == 'POSITIVE':
-            st.success("긍정적인 문장입니다! 😊")
+        # 임계값 설정
+        if score < 0.7:
+            # st.warning("확신도가 낮습니다. 다른 문장으로 재시도해주세요.")
+            st.info("🤔 AI가 확신하지 못하는 문장입니다.")
         else:
-            st.error("부정적인 문장입니다. 😞")
+            if label == 'POSITIVE':
+                st.success("긍정적인 문장입니다! 😊")
+            else:
+                st.error("부정적인 문장입니다. 😞")
+    else:
+        st.warning("분석할 텍스트를 입력해주세요!")  # 빈 입력값 방지
