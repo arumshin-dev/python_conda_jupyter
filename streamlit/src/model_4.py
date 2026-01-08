@@ -12,9 +12,12 @@ class MyModel:
     def predict(self, input_text):
         # AI 예측 로직 시뮬레이션
         # 나중에 이 부분만 FastAPI의 엔드포인트 함수로 변경하면 됩니다.
-        prediction_score = random.random()
-        return {
-            "input": input_text,
-            "score": prediction_score,
-            "is_spam": prediction_score > 0.5
-        }
+        banned = ["광고", "무료", "당첨"]
+        if any(word in input_text for word in banned):
+            return {"input": input_text,
+                    "is_spam": True, 
+                    "score": 1.0}
+        else:
+            return {"input": input_text,
+                    "is_spam": False, 
+                    "score": 0.0}
