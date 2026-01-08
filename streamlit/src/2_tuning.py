@@ -24,13 +24,15 @@ with st.form("training_form"):
         learning_rate = st.slider("Learning Rate", 0.001, 0.1, 0.01) 
     with col2:
         epochs = st.slider("Epochs", 1, 100, 10)
+    # 👉 Batch Size 추가 (Epochs 밑에 위치) 
+    batch_size = st.selectbox("Batch Size", [16, 32, 64, 128])
     
     # 폼 제출 버튼 
     submitted = st.form_submit_button("학습 시작")
 
 # 학습 로직 실행
 if submitted:
-    st.write(f"학습 시작... (LR: {learning_rate}, Epochs: {epochs})")
+    st.write(f"학습 시작... (LR: {learning_rate}, Epochs: {epochs}, Batch Size: {batch_size})")
     
     # 진행률 표시 바 
     progress_bar = st.progress(0)
@@ -53,6 +55,7 @@ if submitted:
     st.session_state.history.append({
         "Learning Rate": learning_rate,
         "Epochs": epochs,
+        "Batch Size": batch_size,
         "Accuracy": accuracy,
         "Loss": loss
     })
@@ -62,4 +65,25 @@ if len(st.session_state.history) > 0:
     st.markdown("---")
     st.subheader("📝 실험 기록 (Session State 유지)")
     # 리스트를 데이터프레임으로 변환하여 표로 출력
-    st.dataframe(pd.DataFrame(st.session_state.history))
+    df = pd.DataFrame(st.session_state.history)
+    # st.dataframe(df)
+
+    # ✅ 최고 성능 강조 
+    best_acc = df["Accuracy"].max() 
+    st.markdown(f"🏆 현재 최고 기록: {best_acc:.3f}")
+    # Styler로 강조 (최고 Accuracy 행에 배경색 적용) 
+    def highlight_best(s): 
+        is_best = s == best_acc 
+        return ['background-color: gold' if v else '' for v in is_best] 
+    # styled_df = df.style.apply(highlight_best, subset=["Accuracy"])
+    def highlight_row(row): 
+        return ['background-color: gold' if row["Accuracy"] == best_acc else '' for _ in row] 
+    styled_df = df.style.apply(highlight_row, axis=1) 
+    st.dataframe(styled_df)
+    # ✅ Accuracy 변화 차트 
+    st.line_chart(df["Accuracy"]) 
+
+    # ✅ 기록 초기화 버튼 (폼 밖, 표 밑) 
+    if st.button("기록 초기화"):
+        st.session_state.history = [] # 기록 초기화 
+        st.rerun() # 화면 새로고침
