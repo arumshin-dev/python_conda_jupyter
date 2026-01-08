@@ -16,8 +16,12 @@ class MyModel:
         if any(word in input_text for word in banned):
             return {"input": input_text,
                     "is_spam": True, 
-                    "score": 1.0}
+                    "score": 1.0,
+                    "reason": "금지어가 포함되어 있습니다."
+                    }
         else:
             return {"input": input_text,
                     "is_spam": False, 
-                    "score": 0.0}
+                    "score": 0.0,
+                    "reason": "특이사항 없음"
+                    }

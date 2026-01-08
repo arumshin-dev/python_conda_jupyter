@@ -26,7 +26,7 @@ if st.button("검사"):
     result = model.predict(text)
     
     st.json(result) # 결과를 JSON 형태로 출력
-    
+    st.info(result["reason"]) # ✅ 이유 표시
     if result['is_spam']:
         st.warning("스팸일 확률이 높습니다!")
     else:
