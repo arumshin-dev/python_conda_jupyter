@@ -20,10 +20,12 @@ model = get_model_instance()
 
 # UI 구성
 text = st.text_input("스팸 메일인지 테스트할 문장 입력")
+keywords_str = st.sidebar.text_input("금지어 설정 (쉼표로 구분)", "광고,무료")
+keywords = keywords_str.split(",")
 
 if st.button("검사"):
     # 분리된 model.py의 함수 호출
-    result = model.predict(text)
+    result = model.predict(text, keywords)
     
     st.json(result) # 결과를 JSON 형태로 출력
     st.info(result["reason"]) # ✅ 이유 표시
