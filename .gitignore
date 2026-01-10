@@ -1,2 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Jupyter
 .ipynb_checkpoints/
+
+# Env / secrets
+.env
+
+# Conda
 anaconda_projects/
+
+# OS
+.DS_Store
+Thumbs.db
