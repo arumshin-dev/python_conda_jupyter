@@ -21,9 +21,18 @@ st.write("이미지를 업로드하면 AI가 무엇인지 분석해줍니다.")
 # 파일 업로드
 uploaded_file = st.file_uploader("이미지 파일을 선택하세요", type=["jpg", "jpeg", "png"])
 
-if uploaded_file is not None:
-    # 이미지 표시
-    image = Image.open(uploaded_file)
+# 카메라 입력
+camera_file = st.camera_input("카메라로 사진 찍기")
+
+# 업로드 또는 카메라 입력된 이미지 선택
+image_source = uploaded_file if uploaded_file else camera_file
+
+if image_source is not None:
+    # 이미지 표시 (use_column_width 대신 width 사용)
+    image = Image.open(image_source)
+# if uploaded_file is not None:
+#     # 이미지 표시
+#     image = Image.open(uploaded_file)
     st.image(image, caption="업로드된 이미지", use_container_width=True)
     st.write("")
     # 분류 실행 버튼
