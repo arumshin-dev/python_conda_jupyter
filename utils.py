@@ -2,6 +2,7 @@ from transformers import pipeline
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import time
 
 @st.cache_resource
 def load_model():
@@ -9,6 +10,19 @@ def load_model():
         "image-classification", 
         model="google/vit-base-patch16-224"
         )
+
+@st.cache_resource
+def load_model1(model_name):
+    return pipeline("image-classification", model=model_name)
+
+def run_inference(image, model):
+    start = time.time()
+    results = model(image)
+    elapsed = time.time() - start
+
+    df = pd.DataFrame(results[:5])
+    return df, elapsed
+
 def classify_and_show(image, model, title="결과"):
     results = model(image)
     st.subheader("🔎 분류 결과")
