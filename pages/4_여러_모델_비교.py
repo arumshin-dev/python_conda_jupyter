@@ -69,7 +69,7 @@ if uploaded_file and run:
     st.subheader("📋 모델별 요약 비교")
     st.dataframe(summary_df)
 
-    for model_key in selected_models:
+    for model_key, model_name, df, elapsed in detail_results:
         with st.expander(f"🔍 {model_key} 상세 결과"):
             st.subheader(f"🔎 {model_name} 결과")
             st.metric("⏱ 시간", f"{elapsed:.3f}s")
