@@ -1,5 +1,5 @@
 import streamlit as st
-from utils import load_model1, run_inference
+from utils import get_image_classifier, run_inference
 from PIL import Image
 import pandas as pd
 
@@ -54,8 +54,8 @@ if uploaded_file and run:
 
     for model_key in selected_models:
         model_name = MODEL_CANDIDATES[model_key]
-        model = load_model1(model_name)
-        df, elapsed = run_inference(image, model)
+        model = get_image_classifier(model_name)
+        df, elapsed, _ = run_inference(image, model)
 
         summary_rows.append({
             "모델": model_key,

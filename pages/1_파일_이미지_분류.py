@@ -1,8 +1,8 @@
 import streamlit as st
 from PIL import Image
-from utils import load_model, classify_and_show
+from utils import get_image_classifier, classify_and_show
 
-model = load_model()
+model = get_image_classifier()
 
 # --- 파일 업로드 방식 ---
 st.header("📂 파일 업로드로 분류하기")

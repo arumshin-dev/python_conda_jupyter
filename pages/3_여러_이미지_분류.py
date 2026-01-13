@@ -1,10 +1,10 @@
 import streamlit as st
 from PIL import Image
-from utils import load_model, classify_image, s_show
+from utils import get_image_classifier, classify_image, s_show
 
 st.title("📂 여러 이미지 한 번에 분류")
 
-model = load_model()
+model = get_image_classifier()
 
 # session_state 초기화
 if "results" not in st.session_state:

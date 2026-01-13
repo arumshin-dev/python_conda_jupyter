@@ -1,10 +1,10 @@
 import streamlit as st
 from PIL import Image
-from utils import load_model, classify_and_show
+from utils import get_image_classifier, classify_and_show
 
 st.title("📸 카메라 이미지 분류")
 
-model = load_model()
+model = get_image_classifier()
 
 camera_file = st.camera_input("사진 찍기")
 
