@@ -7,7 +7,7 @@ st.set_page_config(page_title='영화 리뷰 감성 분석', layout="wide")
 
 # 현재 실행 환경의 호스트 이름 가져오기
 hostname = socket.gethostname()
-
+st.write(hostname)
 # 로컬 실행 여부 판단
 if "local" in hostname.lower() or hostname.startswith("DESKTOP") or hostname.startswith("MacBook"):
     BACKEND_URL = "http://localhost:8000"

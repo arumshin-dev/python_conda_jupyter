@@ -12,3 +12,6 @@ requests
 
 easyocr
 opencv-python-headless
+
+fastapi
+uvicorn
