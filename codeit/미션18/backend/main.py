@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List
 
@@ -40,3 +40,10 @@ movies_db = [
 @app.get("/movies", response_model=List[Movie])
 def get_movies():
     return movies_db
+
+@app.get("/movies/{movie_id}", response_model=Movie)
+def get_movie(movie_id: int):
+    movie = next((m for m in movies_db if m["id"] == movie_id), None)
+    if movie is None:
+        raise HTTPException(status_code=404, detail="Movie not found")
+    return movie

@@ -4,3 +4,11 @@ torch
 pillow
 plotly
 pandas
+
+streamlit-drawable-canvas
+onnxruntime 
+numpy  
+requests
+
+easyocr
+opencv-python-headless
