@@ -7,12 +7,13 @@ st.set_page_config(page_title='영화 리뷰 감성 분석', layout="wide")
 
 # 현재 실행 환경의 호스트 이름 가져오기
 hostname = socket.gethostname()
-st.write(hostname)
+st.write(hostname)# streamlit cloud:localhost
 # 로컬 실행 여부 판단
-if "local" in hostname.lower() or hostname.startswith("DESKTOP") or hostname.startswith("MacBook"):
+if hostname.startswith("DESKTOP") or hostname.startswith("MacBook"):
     BACKEND_URL = "http://localhost:8000"
-else:
+elif "local" in hostname.lower() or hostname.startswith("codespaces"):
     BACKEND_URL = "https://python-conda-jupyter.onrender.com/"
+# else:
 
 st.title("Streamlit Redirect Example")
 st.write(f"현재 BACKEND_URL: `{BACKEND_URL}`")
