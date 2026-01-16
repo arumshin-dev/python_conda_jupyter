@@ -1,8 +1,23 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends 
 from pydantic import BaseModel
 from typing import List
+import os
+import uvicorn
 
 app = FastAPI()
+
+
+
+@app.get("/")
+def read_root():
+    return {"status": "ok"}
+
+# 영화 등록 요청 데이터 모델
+class MovieCreate(BaseModel):
+    title: str
+    director: str
+    genre: str
+    poster_url: str
 
 # 영화 데이터 모델
 class Movie(BaseModel):
@@ -12,8 +27,11 @@ class Movie(BaseModel):
     genre: str
     poster_url: str
 
-# 인메모리 데이터 (초기 영화 3개)
-movies_db = [
+    class Config:
+        from_attributes = True # ✅ Pydantic V2 방식
+
+# 초기 영화 데이터
+MOVIES_DB = [
     {
         "id": 1,
         "title": "타이타닉",
@@ -37,13 +55,49 @@ movies_db = [
     }
 ]
 
+# 영화 목록 조회
 @app.get("/movies", response_model=List[Movie])
 def get_movies():
-    return movies_db
+    return MOVIES_DB
 
+# 영화 상세 조회
 @app.get("/movies/{movie_id}", response_model=Movie)
 def get_movie(movie_id: int):
-    movie = next((m for m in movies_db if m["id"] == movie_id), None)
+    movie = next((m for m in MOVIES_DB if m["id"] == movie_id), None)
     if movie is None:
         raise HTTPException(status_code=404, detail="Movie not found")
     return movie
+
+# 영화 등록
+@app.post("/movies", response_model=Movie)
+def add_movie(movie: MovieCreate):
+    new_id = max([m["id"] for m in MOVIES_DB]) + 1 if MOVIES_DB else 1
+    new_movie = {"id": new_id, **movie.dict()}
+    MOVIES_DB.append(new_movie)
+    return new_movie
+
+# 영화 수정
+@app.put("/movies/{movie_id}", response_model=Movie)
+def update_movie(movie_id: int, movie_data: MovieCreate):
+    for i, m in enumerate(MOVIES_DB):
+        if m["id"] == movie_id:
+            updated_movie = {"id": movie_id, **movie_data.dict()}
+            MOVIES_DB[i] = updated_movie
+            return updated_movie
+    raise HTTPException(status_code=404, detail="Movie not found")
+
+# 영화 삭제
+@app.delete("/movies/{movie_id}")
+def delete_movie(movie_id: int):
+    global MOVIES_DB
+    MOVIES_DB = [m for m in MOVIES_DB if m["id"] != movie_id]
+    return {"message": "Movie deleted successfully"}
+
+# uvicorn codeit.미션18.backend.main:app --host 0.0.0.0 --port $PORT
+if __name__ == "__main__":
+    uvicorn.run(
+        "codeit.미션18.backend.main:app",
+        host="0.0.0.0",
+        port=int(os.getenv("PORT", 8000))
+    )
+# python codeit/미션18/backend/main.py
