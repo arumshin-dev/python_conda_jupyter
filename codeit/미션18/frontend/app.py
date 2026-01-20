@@ -69,7 +69,7 @@ if selected_id:
                             st.error("수정 실패")
 
             # 버튼들 (목록으로, 삭제)
-            col_b1, col_b2 = st.columns([1, 1])
+            col_b1, col_b2 = st.columns([2, 1])
             with col_b1:
                 if st.button("⬅️ 목록으로 돌아가기"):
                     st.query_params.clear()
@@ -83,6 +83,75 @@ if selected_id:
                         st.rerun()
                     else:
                         st.error("삭제 실패")
+            
+            # --- 리뷰 섹션 ---
+            st.divider()
+            st.subheader("💬 리뷰")
+            
+            # 리뷰 목록 표시
+            if movie.get('reviews'):
+                for rev in movie['reviews']:
+                    with st.container(border=True):
+                        c1, c2, c3 = st.columns([1, 4, 1])
+                        c1.write(f"**{rev['author']}**")
+                        c1.caption(rev['created_at'])
+                        
+                        sentiment_color = "green" if "긍정" in rev.get('sentiment', '') else ("red" if "부정" in rev.get('sentiment', '') else "gray")
+                        c2.write(rev['content'])
+                        c2.markdown(f"⭐ **점수:** {rev['rating']} | <span style='color:{sentiment_color}'>분석: {rev['sentiment']}</span>", unsafe_allow_html=True)
+                        
+                        # 리뷰 작업 버튼 (삭제/수정)
+                        with c3:
+                            if st.button("🗑️", key=f"del_rev_{rev['id']}"):
+                                re_del = requests.delete(f"{BACKEND_URL}/reviews/{rev['id']}", timeout=5)
+                                if re_del.status_code == 200:
+                                    st.rerun()
+                            
+                            show_edit = st.toggle("✏️", key=f"toggle_edit_{rev['id']}")
+
+                        # 리뷰 수정 폼 (토글 시 나타남)
+                        if show_edit:
+                            with st.form(f"edit_review_form_{rev['id']}"):
+                                edit_author = st.text_input("수정할 작성자", value=rev['author'])
+                                edit_content = st.text_area("수정할 내용", value=rev['content'])
+                                edit_rating = st.slider("수정할 평점", 0.0, 10.0, float(rev['rating']), 0.5)
+                                
+                                if st.form_submit_button("리뷰 수정 완료"):
+                                    updated_rev = {
+                                        "author": edit_author,
+                                        "content": edit_content,
+                                        "rating": edit_rating,
+                                        "created_at": rev['created_at'] # 원본 날짜 유지
+                                    }
+                                    re_upd = requests.put(f"{BACKEND_URL}/reviews/{rev['id']}", json=updated_rev, timeout=10)
+                                    if re_upd.status_code == 200:
+                                        st.success("리뷰가 수정되었습니다!")
+                                        st.rerun()
+            else:
+                st.info("아직 리뷰가 없습니다. 첫 리뷰를 남겨보세요!")
+
+            # 리뷰 작성 폼
+            with st.expander("✍️ 리뷰 남기기"):
+                with st.form("add_review_form"):
+                    rev_author = st.text_input("작성자")
+                    rev_content = st.text_area("리뷰 내용")
+                    rev_rating = st.slider("평점", 0.0, 10.0, 8.0, 0.5)
+                    rev_submit = st.form_submit_button("리뷰 등록")
+                    
+                    if rev_submit:
+                        import datetime
+                        new_rev = {
+                            "author": rev_author,
+                            "content": rev_content,
+                            "rating": rev_rating,
+                            "created_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+                        }
+                        res_rev = requests.post(f"{BACKEND_URL}/movies/{selected_id}/reviews", json=new_rev, timeout=10)
+                        if res_rev.status_code == 200:
+                            st.success("리뷰가 등록되었습니다!")
+                            st.rerun()
+                        else:
+                            st.error("리뷰 등록 실패")
         else:
             st.error("영화 상세 정보를 불러올 수 없습니다.")
     except requests.exceptions.RequestException as e:

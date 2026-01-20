@@ -1,6 +1,42 @@
 from sqlalchemy.orm import Session
 import models, schemas
 
+import os
+from openai import OpenAI
+from dotenv import load_dotenv
+
+load_dotenv()
+api_key = os.getenv("OPENAI_API_KEY")
+client = OpenAI(api_key=api_key) if api_key else None
+
+def analyze_sentiment(content: str):
+    """AI를 사용한 감성 분석 (OpenAI 사용, 없으면 간단한 로직으로 대체)"""
+    if not client:
+        # API 키가 없을 때의 간단한 휴리스틱 분석
+        pos_words = ["좋아", "최고", "감동", "재밌", "훌륭", "추천"]
+        neg_words = ["노잼", "별로", "최악", "지루", "망작", "비추"]
+        
+        pos_count = sum(1 for word in pos_words if word in content)
+        neg_count = sum(1 for word in neg_words if word in content)
+        
+        if pos_count > neg_count: return "긍정 (Heuristic)"
+        elif neg_count > pos_count: return "부정 (Heuristic)"
+        else: return "중립 (Heuristic)"
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "너는 영화 리뷰 감성 분석가야. 리뷰 내용을 보고 '긍정', '부정', '중립' 중 하나로만 대답해."},
+                {"role": "user", "content": content}
+            ],
+            max_tokens=10
+        )
+        return response.choices[0].message.content.strip()
+    except Exception as e:
+        return f"분석 오류 ({str(e)})"
+
+# Movie CRUD (기존 유지)
 def get_movie(db: Session, movie_id: int):
     return db.query(models.Movie).filter(models.Movie.id == movie_id).first()
 
@@ -30,6 +66,39 @@ def delete_movie(db: Session, movie_id: int):
         db.commit()
         return True
     return False
+
+# Review CRUD 추가
+def get_reviews(db: Session, movie_id: int):
+    return db.query(models.Review).filter(models.Review.movie_id == movie_id).all()
+
+def create_review(db: Session, movie_id: int, review: schemas.ReviewCreate):
+    sentiment = analyze_sentiment(review.content)
+    db_review = models.Review(**review.model_dump(), movie_id=movie_id, sentiment=sentiment)
+    db.add(db_review)
+    db.commit()
+    db.refresh(db_review)
+    return db_review
+
+def delete_review(db: Session, review_id: int):
+    db_review = db.query(models.Review).filter(models.Review.id == review_id).first()
+    if db_review:
+        db.delete(db_review)
+        db.commit()
+        return True
+    return False
+
+def update_review(db: Session, review_id: int, review_data: schemas.ReviewCreate):
+    db_review = db.query(models.Review).filter(models.Review.id == review_id).first()
+    if db_review:
+        # 내용이 바뀌면 감성 분석도 다시 수행
+        if db_review.content != review_data.content:
+            db_review.sentiment = analyze_sentiment(review_data.content)
+            
+        for key, value in review_data.model_dump().items():
+            setattr(db_review, key, value)
+        db.commit()
+        db.refresh(db_review)
+    return db_review
 
 def init_db(db: Session):
     if db.query(models.Movie).count() == 0:

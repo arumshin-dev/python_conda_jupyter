@@ -74,6 +74,27 @@ def delete_movie(movie_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Movie not found")
     return {"message": "Movie deleted successfully"}
 
+# 리뷰 등록
+@app.post("/movies/{movie_id}/reviews", response_model=schemas.Review)
+def add_review(movie_id: int, review: schemas.ReviewCreate, db: Session = Depends(get_db)):
+    return crud.create_review(db, movie_id, review)
+
+# 리뷰 삭제
+@app.delete("/reviews/{review_id}")
+def delete_review(review_id: int, db: Session = Depends(get_db)):
+    success = crud.delete_review(db, review_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Review not found")
+    return {"message": "Review deleted successfully"}
+
+# 리뷰 수정
+@app.put("/reviews/{review_id}", response_model=schemas.Review)
+def update_review(review_id: int, review: schemas.ReviewCreate, db: Session = Depends(get_db)):
+    updated_review = crud.update_review(db, review_id, review)
+    if updated_review is None:
+        raise HTTPException(status_code=404, detail="Review not found")
+    return updated_review
+
 if __name__ == "__main__":
     uvicorn.run("codeit.미션18.backend.main:app", host="0.0.0.0", port=8000, reload=True)
 # python codeit/미션18/backend/main.py
