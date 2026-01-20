@@ -10,10 +10,9 @@ hostname = socket.gethostname()
 st.write(f"현재 호스트: {hostname}")# streamlit cloud:localhost
 
 # 로컬/클라우드 환경 구분
-if hostname.startswith("DESKTOP") or hostname.startswith("MacBook"):
-    BACKEND_URL = "http://localhost:8000"
-else:#elif "local" in hostname.lower() or hostname.startswith("codespaces"):
-    BACKEND_URL = "https://python-conda-jupyter.onrender.com"
+import os
+BACKEND_URL = os.getenv("BACKEND_URL", "http://backend:8000")
+BACKEND_URL_BROWSER = os.getenv("BACKEND_URL_BROWSER", "http://localhost:8000")
 
 st.title("🎬 영화 리뷰 감성 분석")
 st.write(f"현재 BACKEND_URL: `{BACKEND_URL}`")
@@ -21,10 +20,10 @@ st.write(f"현재 BACKEND_URL: `{BACKEND_URL}`")
 # 백엔드로 이동 버튼 (JS 실행)
 if st.button("백엔드로 이동"):
     st.markdown(
-    f'<a href="{BACKEND_URL}/docs" target="_blank">👉 백엔드로 새창에서 열기-swagger</a>',
+    f'<a href="{BACKEND_URL_BROWSER}/docs" target="_blank">👉 백엔드로 새창에서 열기-swagger</a>',
     unsafe_allow_html=True
     )
-    st.markdown(f"[👉 백엔드로 이동하기-redoc]({BACKEND_URL}/redoc)", unsafe_allow_html=True)
+    st.markdown(f"[👉 백엔드로 이동하기-redoc]({BACKEND_URL_BROWSER}/redoc)", unsafe_allow_html=True)
 
 
 # URL 파라미터 읽기

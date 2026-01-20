@@ -4,7 +4,7 @@ from typing import List
 import uvicorn
 from contextlib import asynccontextmanager
 
-from . import database, models, schemas, crud
+import database, models, schemas, crud
 
 # DB 테이블 생성
 models.Base.metadata.create_all(bind=database.engine)
