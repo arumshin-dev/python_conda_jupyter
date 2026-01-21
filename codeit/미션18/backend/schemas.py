@@ -24,6 +24,7 @@ class MovieBase(BaseModel):
     director: str
     genre: str
     poster_url: str
+    release_date: Optional[str] = None
 
 class MovieCreate(MovieBase):
     pass
@@ -31,5 +32,6 @@ class MovieCreate(MovieBase):
 class Movie(MovieBase):
     id: int
     reviews: List[Review] = []
+    average_rating: float = 0.0
     
     model_config = ConfigDict(from_attributes=True)

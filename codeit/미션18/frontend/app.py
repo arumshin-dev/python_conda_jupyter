@@ -1,215 +1,184 @@
 import streamlit as st
 import requests
+import os
+import datetime
 import socket
 
-# 페이지 설정 (항상 최상단에 위치)
-st.set_page_config(page_title='영화 리뷰 감성 분석', layout="wide")
+# --- Configuration ---
+st.set_page_config(page_title='영화 리뷰 홈', layout="wide", page_icon="🍿")
 
-# 현재 실행 환경의 호스트 이름 가져오기
-hostname = socket.gethostname()
-st.write(f"현재 호스트: {hostname}")# streamlit cloud:localhost
-
-# 로컬/클라우드 환경 구분
-import os
 BACKEND_URL = os.getenv("BACKEND_URL", "http://backend:8000")
-BACKEND_URL_BROWSER = os.getenv("BACKEND_URL_BROWSER", "http://localhost:8000")
+hostname = socket.gethostname()
 
-st.title("🎬 영화 리뷰 감성 분석")
-st.write(f"현재 BACKEND_URL: `{BACKEND_URL}`")
-
-# 백엔드로 이동 버튼 (JS 실행)
-if st.button("백엔드로 이동"):
-    st.markdown(
-    f'<a href="{BACKEND_URL_BROWSER}/docs" target="_blank">👉 백엔드로 새창에서 열기-swagger</a>',
-    unsafe_allow_html=True
-    )
-    st.markdown(f"[👉 백엔드로 이동하기-redoc]({BACKEND_URL_BROWSER}/redoc)", unsafe_allow_html=True)
-
-
-# URL 파라미터 읽기
-params = st.query_params
-selected_id = int(params["movie_id"]) if "movie_id" in params else None
-
-if selected_id:
-    st.title("🎬 영화 상세 및 수정")
+# --- Functions ---
+def get_movies_all():
     try:
-        response = requests.get(f"{BACKEND_URL}/movies/{selected_id}", timeout=5)
-        if response.status_code == 200:
-            movie = response.json()
-            
-            col1, col2 = st.columns([1, 2])
-            with col1:
-                if movie['poster_url'] and movie['poster_url'].startswith(('http', 'https')):
-                    st.image(movie['poster_url'], width='stretch')
-                else:
-                    st.warning("유효하지 않은 포스터 URL입니다.")
-            
-            with col2:
-                # 수정 폼
-                with st.form("update_movie_form"):
-                    st.subheader("정보 수정")
-                    edit_title = st.text_input("제목", value=movie['title'])
-                    edit_director = st.text_input("감독", value=movie['director'])
-                    edit_genre = st.text_input("장르", value=movie['genre'])
-                    edit_poster = st.text_input("포스터 URL", value=movie['poster_url'])
-                    
-                    update_submitted = st.form_submit_button("변경사항 저장")
-                    if update_submitted:
-                        updated_data = {
-                            "title": edit_title,
-                            "director": edit_director,
-                            "genre": edit_genre,
-                            "poster_url": edit_poster
-                        }
-                        upd_res = requests.put(f"{BACKEND_URL}/movies/{selected_id}", json=updated_data, timeout=5)
-                        if upd_res.status_code == 200:
-                            st.success("수정되었습니다!")
-                            st.rerun()
-                        else:
-                            st.error("수정 실패")
+        res = requests.get(f"{BACKEND_URL}/movies_all", timeout=5)
+        return res.json() if res.status_code == 200 else []
+    except:
+        return []
 
-            # 버튼들 (목록으로, 삭제)
-            col_b1, col_b2 = st.columns([2, 1])
-            with col_b1:
-                if st.button("⬅️ 목록으로 돌아가기"):
+def get_movies():
+    try:
+        res = requests.get(f"{BACKEND_URL}/movies", timeout=5)
+        return res.json() if res.status_code == 200 else []
+    except:
+        return []
+
+def get_movie_detail(movie_id):
+    try:
+        res = requests.get(f"{BACKEND_URL}/movies/{movie_id}", timeout=5)
+        return res.json() if res.status_code == 200 else None
+    except:
+        return None
+
+# --- Main Logic ---
+st.title("🍿 영화 감상 및 리뷰 홈")
+
+# --- [페이지 1] 영화 감상 및 리뷰 ---
+def show_home():
+    # --- 상세 보기 모드 ---
+    params = st.query_params
+    selected_id = int(params["movie_id"]) if "movie_id" in params else None
+
+    if selected_id:
+        movie = get_movie_detail(selected_id)
+        if movie:
+            col_img, col_txt = st.columns([1, 2])
+            with col_img:
+                if movie.get('poster_url'):
+                    try:
+                        resp = requests.get(movie['poster_url'])
+                        if resp.status_code == 200: 
+                            st.image(resp.content, use_container_width=True)
+                        else: st.warning("이미지 오류")
+                    except: st.warning("이미지 없음")
+            with col_txt:
+                st.header(movie['title'])
+                st.subheader(f"⭐ {movie.get('average_rating', 0.0)} | 🎬 {movie['director']} | 🎭 {movie['genre']}")
+                st.caption(f"개봉일: {movie.get('release_date', '미정')}")
+                if st.button("⬅️ 목록으로"):
                     st.query_params.clear()
                     st.rerun()
-            with col_b2:
-                if st.button("🗑️ 영화 삭제", type="primary"):
-                    del_res = requests.delete(f"{BACKEND_URL}/movies/{selected_id}", timeout=5)
-                    if del_res.status_code == 200:
-                        st.success("삭제되었습니다!")
-                        st.query_params.clear()
-                        st.rerun()
-                    else:
-                        st.error("삭제 실패")
-            
-            # --- 리뷰 섹션 ---
+
             st.divider()
-            st.subheader("💬 리뷰")
+            st.subheader(f"💬 리뷰 ({len(movie.get('reviews', []))})")
             
-            # 리뷰 목록 표시
-            if movie.get('reviews'):
-                for rev in movie['reviews']:
-                    with st.container(border=True):
-                        c1, c2, c3 = st.columns([1, 4, 1])
-                        c1.write(f"**{rev['author']}**")
-                        c1.caption(rev['created_at'])
-                        
-                        sentiment_color = "green" if "긍정" in rev.get('sentiment', '') else ("red" if "부정" in rev.get('sentiment', '') else "gray")
-                        c2.write(rev['content'])
-                        c2.markdown(f"⭐ **점수:** {rev['rating']} | <span style='color:{sentiment_color}'>분석: {rev['sentiment']}</span>", unsafe_allow_html=True)
-                        
-                        # 리뷰 작업 버튼 (삭제/수정)
-                        with c3:
-                            if st.button("🗑️", key=f"del_rev_{rev['id']}"):
-                                re_del = requests.delete(f"{BACKEND_URL}/reviews/{rev['id']}", timeout=5)
-                                if re_del.status_code == 200:
-                                    st.rerun()
-                            
-                            show_edit = st.toggle("✏️", key=f"toggle_edit_{rev['id']}")
-
-                        # 리뷰 수정 폼 (토글 시 나타남)
-                        if show_edit:
-                            with st.form(f"edit_review_form_{rev['id']}"):
-                                edit_author = st.text_input("수정할 작성자", value=rev['author'])
-                                edit_content = st.text_area("수정할 내용", value=rev['content'])
-                                edit_rating = st.slider("수정할 평점", 0.0, 10.0, float(rev['rating']), 0.5)
-                                
-                                if st.form_submit_button("리뷰 수정 완료"):
-                                    updated_rev = {
-                                        "author": edit_author,
-                                        "content": edit_content,
-                                        "rating": edit_rating,
-                                        "created_at": rev['created_at'] # 원본 날짜 유지
-                                    }
-                                    re_upd = requests.put(f"{BACKEND_URL}/reviews/{rev['id']}", json=updated_rev, timeout=10)
-                                    if re_upd.status_code == 200:
-                                        st.success("리뷰가 수정되었습니다!")
-                                        st.rerun()
-            else:
-                st.info("아직 리뷰가 없습니다. 첫 리뷰를 남겨보세요!")
-
-            # 리뷰 작성 폼
             with st.expander("✍️ 리뷰 남기기"):
-                with st.form("add_review_form"):
-                    rev_author = st.text_input("작성자")
-                    rev_content = st.text_area("리뷰 내용")
-                    rev_rating = st.slider("평점", 0.0, 10.0, 8.0, 0.5)
-                    rev_submit = st.form_submit_button("리뷰 등록")
-                    
-                    if rev_submit:
-                        import datetime
-                        new_rev = {
-                            "author": rev_author,
-                            "content": rev_content,
-                            "rating": rev_rating,
-                            "created_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-                        }
-                        res_rev = requests.post(f"{BACKEND_URL}/movies/{selected_id}/reviews", json=new_rev, timeout=10)
-                        if res_rev.status_code == 200:
-                            st.success("리뷰가 등록되었습니다!")
-                            st.rerun()
-                        else:
-                            st.error("리뷰 등록 실패")
-        else:
-            st.error("영화 상세 정보를 불러올 수 없습니다.")
-    except requests.exceptions.RequestException as e:
-        st.error(f"백엔드 요청 실패: {e}")
-
-else:
-    # 1. 등록 폼 (목록 상단)
-    with st.form("add_movie_form"): 
-        st.subheader("새 영화 등록") 
-        title = st.text_input("제목") 
-        director = st.text_input("감독") 
-        genre = st.text_input("장르") 
-        poster_url = st.text_input("포스터 URL") 
-        submitted = st.form_submit_button("등록") 
-        if submitted: 
-            new_movie = { 
-                "title": title, 
-                "director": director, 
-                "genre": genre, 
-                "poster_url": poster_url 
-                } 
-            try: 
-                response = requests.post(f"{BACKEND_URL}/movies", json=new_movie, timeout=5)
-                if response.status_code == 200: 
-                    st.success("영화가 등록되었습니다!") 
-                    st.rerun() 
-                else: st.error("등록 실패") 
-            except requests.exceptions.RequestException as e: 
-                st.error(f"백엔드 요청 실패: {e}")
-
-    # 2. 영화 목록
-    st.title("🎬 영화 목록")
-    try:
-        response = requests.get(f"{BACKEND_URL}/movies", timeout=5)
-        if response.status_code == 200:
-            movies = response.json()
-            st.write(f"전체 영화 수: {len(movies)}개")
-            cols = st.columns(3)
-            for i, movie in enumerate(movies):
-                with cols[i % 3]:
-                    if movie['poster_url'] and movie['poster_url'].startswith(('http', 'https')):
-                        st.image(movie['poster_url'], width='stretch')
-                    else:
-                        st.info("포스터 없음")
-                    st.subheader(movie['title'])
-                    st.write(f"**장르:** {movie['genre']}")
-                    st.write(f"**감독:** {movie['director']}")
-                    if st.button("상세보기/수정", key=f"btn_{movie['id']}"):
-                        st.query_params["movie_id"] = movie['id']
+                with st.form("add_review"):
+                    auth = st.text_input("작성자")
+                    cont = st.text_area("내용")
+                    rate = st.slider("평점", 0.0, 10.0, 8.0, 0.5)
+                    if st.form_submit_button("등록"):
+                        now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+                        requests.post(f"{BACKEND_URL}/movies/{selected_id}/reviews", 
+                                      json={"author": auth, "content": cont, "rating": rate, "created_at": now})
                         st.rerun()
-                    if st.button("🗑️ 영화 삭제", type="primary", key=f"del_{movie['id']}"):
-                        del_res = requests.delete(f"{BACKEND_URL}/movies/{movie['id']}", timeout=5)
-                        if del_res.status_code == 200:
-                            st.success("삭제되었습니다!")
+
+            for rev in reversed(movie.get('reviews', [])):
+                with st.container(border=True):
+                    r1, r2, r3 = st.columns([1, 4, 1])
+                    r1.write(f"**{rev['author']}**")
+                    r1.caption(rev['created_at'])
+                    color = "green" if "긍정" in rev.get('sentiment', '') else ("red" if "부정" in rev.get('sentiment', '') else "gray")
+                    r2.write(rev['content'])
+                    r2.markdown(f"⭐ {rev['rating']} | <span style='color:{color}'>AI: {rev['sentiment']}</span>", unsafe_allow_html=True)
+                    with r3:
+                        if st.button("🗑️", key=f"del_{rev['id']}"):
+                            requests.delete(f"{BACKEND_URL}/reviews/{rev['id']}")
                             st.rerun()
-                        else:
-                            st.error("삭제 실패")
+                        if st.toggle("✏️", key=f"ed_{rev['id']}"):
+                            with st.form(f"f_{rev['id']}"):
+                                n_auth = st.text_input("작성자", value=rev['author'])
+                                n_cont = st.text_area("내용", value=rev['content'])
+                                n_rate = st.slider("평점", 0.0, 10.0, float(rev['rating']), 0.5)
+                                if st.form_submit_button("수정"):
+                                    requests.put(f"{BACKEND_URL}/reviews/{rev['id']}", 
+                                                 json={"author": n_auth, "content": n_cont, "rating": n_rate, "created_at": rev['created_at']})
+                                    st.rerun()
+    else:
+        # --- [목록 페이지] ---
+        st.header("🍿 영화 감상실")
+        
+        # 1. 사이드바나 상단에서 모든 영화 정보 미리 가져오기 (필터 옵션용)
+        raw_movies = get_movies_all() # raw_movies: 영화 데이터 리스트
+        # st.write(f"총 영화: {len(raw_movies)}")
+        genres = set()  # 중복 제거를 위해 set 사용
+
+        for m in raw_movies:
+            if m.get('genre'):
+                # 콤마로 분리 후 strip()으로 공백 제거
+                for g in m['genre'].split(','):
+                    genres.add(g.strip())
+
+        # 최종적으로 정렬된 리스트
+        genres = sorted(genres)
+
+        years = sorted(list(set(m['release_date'][:4] for m in raw_movies if m.get('release_date'))), reverse=True)
+
+        # 2. 검색 UI
+        with st.expander("🔍 상세 검색 및 필터", expanded=True):
+            c1, c2, c3, c4 = st.columns([2, 1, 1, 1])
+            s_title = c1.text_input("영화 제목")
+            s_genre = c2.selectbox("장르", ["전체"] + genres)
+            s_director = c3.text_input("감독명")
+            s_year = c4.selectbox("개봉년도", ["전체"] + years)
+
+        # 3. 페이징 상태 및 필터 변경 감지
+        if 'page' not in st.session_state: st.session_state.page = 1
+        
+        # 필터 변경 시 페이지 리셋
+        filter_state = f"{s_title}_{s_genre}_{s_director}_{s_year}"
+        if 'last_filter' not in st.session_state:
+            st.session_state.last_filter = filter_state
+        
+        if st.session_state.last_filter != filter_state:
+            st.session_state.page = 1
+            st.session_state.last_filter = filter_state
+
+        limit = 10
+        skip = (st.session_state.page - 1) * limit
+
+        # 4. API로 필터링된 데이터만 가져오기
+        params = {"skip": skip, "limit": limit, "title": s_title, "genre": s_genre, "director": s_director, "year": s_year}
+        res = requests.get(f"{BACKEND_URL}/movies", params=params)
+        current_movies = res.json() if res.status_code == 200 else []
+        if not current_movies:
+            st.info("조건에 맞는 영화가 없습니다.")
         else:
-            st.error("영화 목록을 불러올 수 없습니다.")
-    except requests.exceptions.RequestException as e:
-        st.error(f"백엔드 요청 실패: {e}")
+            # 영화 그리드
+            cols = st.columns(5)
+            for idx, m in enumerate(current_movies):
+                with cols[idx % 5]:
+                    if m.get('poster_url'):
+                        try: 
+                            resp = requests.get(m['poster_url'])
+                            if resp.status_code == 200: 
+                                st.image(resp.content, use_container_width=True)
+                            else: st.warning("이미지 오류")
+                        except: st.warning("이미지 오류")
+                    # st.markdown(f"⭐ **{m.get('average_rating', 0.0)}** | {m.get('release_date', '미정')[:4]}")
+                    st.markdown(f"⭐ **{m.get('average_rating', 0.0)}** | {m.get('release_date', '미정')}")
+                    st.subheader(m['title'])
+                    if st.button("상세보기", key=f"v_{m['id']}", use_container_width=True):
+                        st.query_params["movie_id"] = m['id']
+                        st.rerun()
+
+            # 5. 페이징 버튼 UI
+            st.divider()
+            col_b1, col_page, col_b2 = st.columns([1, 2, 1])
+            with col_b1:
+                if st.button("⬅️ 이전 페이지", disabled=st.session_state.page <= 1, use_container_width=True):
+                    st.session_state.page -= 1
+                    st.rerun()
+            with col_page:
+                st.markdown(f"<center><b>{st.session_state.page} 페이지</b></center>", unsafe_allow_html=True)
+            with col_b2:
+                # 다음 페이지 데이터가 있는지 확인용 (간단히 현재 데이터가 limit만큼 있으면 다음이 있다고 가정)
+                if st.button("다음 페이지 ➡️", disabled=len(current_movies) < limit, use_container_width=True):
+                    st.session_state.page += 1
+                    st.rerun()
+
+# 실행
+if __name__ == "__main__":
+    show_home()

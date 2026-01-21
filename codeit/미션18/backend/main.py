@@ -41,9 +41,21 @@ def set3movies(db: Session = Depends(get_db)):
     return {"message": "3 movies set successfully or already exist"}
 
 # 영화 목록 조회
+@app.get("/movies_all", response_model=List[schemas.Movie])
+def get_movies_all(db: Session = Depends(get_db)):
+    return crud.get_movies_all(db)
+
 @app.get("/movies", response_model=List[schemas.Movie])
-def get_movies(db: Session = Depends(get_db)):
-    return crud.get_movies(db)
+def get_movies(
+    skip: int = 0, 
+    limit: int = 100, 
+    title: str = None, 
+    genre: str = None, 
+    director: str = None, 
+    year: str = None,
+    db: Session = Depends(get_db)
+):
+    return crud.get_movies(db, skip=skip, limit=limit, title=title, genre=genre, director=director, year=year)
 
 # 영화 상세 조회
 @app.get("/movies/{movie_id}", response_model=schemas.Movie)

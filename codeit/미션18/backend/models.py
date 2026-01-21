@@ -10,6 +10,7 @@ class Movie(Base):
     director = Column(String)
     genre = Column(String)
     poster_url = Column(String)
+    release_date = Column(String, nullable=True) # YYYY-MM-DD 형식
 
     # 1:N 관계 (영화 하나에 리뷰 여러 개)
     reviews = relationship("Review", back_populates="movie", cascade="all, delete-orphan")

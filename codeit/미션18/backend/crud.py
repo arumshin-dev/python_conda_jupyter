@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 import models, schemas
 
 import os
+import json
 from openai import OpenAI
 from dotenv import load_dotenv
 
@@ -36,12 +37,50 @@ def analyze_sentiment(content: str):
     except Exception as e:
         return f"분석 오류 ({str(e)})"
 
-# Movie CRUD (기존 유지)
-def get_movie(db: Session, movie_id: int):
-    return db.query(models.Movie).filter(models.Movie.id == movie_id).first()
+from sqlalchemy import func
 
-def get_movies(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(models.Movie).offset(skip).limit(limit).all()
+# Movie CRUD
+def get_movies_all(db: Session):
+    return db.query(models.Movie).all()
+def get_movies(db: Session, skip: int = 0, limit: int = 100, 
+               title: str = None, genre: str = None, 
+               director: str = None, year: str = None):
+    # 기본 쿼리: 영화 정보와 리뷰 평균 점수를 JOIN해서 가져옴
+    # outerjoin을 써야 리뷰가 없는 영화도 나옵니다.
+    query = db.query(
+        models.Movie,
+        func.avg(models.Review.rating).label("average_rating")
+    ).outerjoin(models.Review).group_by(models.Movie.id)
+
+    # SQL WHERE 필터링
+    if title:
+        query = query.filter(models.Movie.title.ilike(f"%{title.strip()}%"))
+    if genre and genre != "전체":
+        # query = query.filter(models.Movie.genre == genre)
+        query = query.filter(models.Movie.genre.contains(genre))
+    if director:
+        query = query.filter(models.Movie.director.ilike(f"%{director.strip()}%"))
+    if year and year != "전체":
+        query = query.filter(models.Movie.release_date.startswith(year.strip()))
+
+    results = query.offset(skip).limit(limit).all()
+    
+    # 결과를 Pydantic 모델에 맞게 변환 (평균 점수 주입)
+    movies = []
+    for movie_obj, avg_rating in results:
+        # DB 객체에 동적으로 average_rating 속성 추가
+        movie_obj.average_rating = round(avg_rating, 1) if avg_rating else 0.0
+        movies.append(movie_obj)
+        
+    return movies
+
+def get_movie(db: Session, movie_id: int):
+    movie = db.query(models.Movie).filter(models.Movie.id == movie_id).first()
+    if movie:
+        # 상세 조회 시에도 평균 점수 계산 (SQL 1회 더 실행)
+        avg = db.query(func.avg(models.Review.rating)).filter(models.Review.movie_id == movie_id).scalar()
+        movie.average_rating = round(avg, 1) if avg else 0.0
+    return movie
 
 def create_movie(db: Session, movie: schemas.MovieCreate):
     db_movie = models.Movie(**movie.model_dump())
@@ -102,10 +141,21 @@ def update_review(db: Session, review_id: int, review_data: schemas.ReviewCreate
 
 def init_db(db: Session):
     if db.query(models.Movie).count() == 0:
-        initial_movies = [
-            models.Movie(title="타이타닉", director="제임스 카메론", genre="로맨스", poster_url="https://media.themoviedb.org/t/p/w300_and_h450_face/132KjhVrWUqKFVfMAKKNkherytA.jpg"),
-            models.Movie(title="해리포터와 마법사의 돌", director="크리스 콜럼버스", genre="판타지", poster_url="https://media.themoviedb.org/t/p/w300_and_h450_face/8YaP48tVfngbURGldWk1I5odsBK.jpg"),
-            models.Movie(title="인셉션", director="크리스토퍼 놀란", genre="SF", poster_url="https://media.themoviedb.org/t/p/w300_and_h450_face/zTgjeblxSLSvomt6F6UYtpiD4n7.jpg")
-        ]
-        db.add_all(initial_movies)
-        db.commit()
+        json_path = os.path.join(os.path.dirname(__file__), "movies.json")
+        if os.path.exists(json_path):
+            with open(json_path, "r", encoding="utf-8") as f:
+                movies_data = json.load(f)
+            initial_movies = [
+                models.Movie(**movie) for movie in movies_data
+            ]
+            db.add_all(initial_movies)
+            db.commit()
+        else:
+            # Fallback to a small set if file doesn't exist
+            fallback_movies = [
+                models.Movie(title="타이타닉", director="제임스 카메론", genre="로맨스", poster_url="https://media.themoviedb.org/t/p/w300_and_h450_face/132KjhVrWUqKFVfMAKKNkherytA.jpg", release_date="1997-12-19"),
+                models.Movie(title="해리포터와 마법사의 돌", director="크리스 콜럼버스", genre="판타지", poster_url="https://media.themoviedb.org/t/p/w300_and_h450_face/8YaP48tVfngbURGldWk1I5odsBK.jpg", release_date="2001-11-16"),
+                models.Movie(title="인셉션", director="크리스토퍼 놀란", genre="SF", poster_url="https://media.themoviedb.org/t/p/w300_and_h450_face/zTgjeblxSLSvomt6F6UYtpiD4n7.jpg", release_date="2010-07-16")
+            ]
+            db.add_all(fallback_movies)
+            db.commit()
