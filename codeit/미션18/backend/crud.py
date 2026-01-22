@@ -3,76 +3,7 @@ import models, schemas
 
 import os
 import json
-import re
-from openai import OpenAI
-from dotenv import load_dotenv
-
-# .env 파일 로드 (현재 디렉토리부터 상위 디렉토리까지 검색)
-env_path = os.path.join(os.path.dirname(__file__), ".env")
-if not os.path.exists(env_path):
-    # 상위 디렉토리 확인 (mission18_project/.env 대응)
-    env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".env")
-
-load_dotenv(dotenv_path=env_path)
-api_key = os.getenv("OPENAI_API_KEY")
-client = OpenAI(api_key=api_key) if api_key else None
-
-def analyze_sentiment(content: str):
-    """AI를 사용한 감성 분석 (OpenAI 사용, 없으면 간단한 로직으로 대체)"""
-    if not client:
-        # API 키가 없을 때의 간단한 휴리스틱 분석
-        pos_words = ["좋아", "최고", "감동", "재밌", "훌륭", "추천", "인생영화", "대박"]
-        neg_words = ["노잼", "별로", "최악", "지루", "망작", "비추"]
-        
-        pos_count = sum(1 for word in pos_words if word in content)
-        neg_count = sum(1 for word in neg_words if word in content)
-        
-        if pos_count > neg_count: return "긍정 (Heuristic)"
-        elif neg_count > pos_count: return "부정 (Heuristic)"
-        else: return "중립 (Heuristic)"
-
-    try:
-        prompt = f"""
-다음 영화 리뷰의 감성을 분석해.
-결과는 반드시 아래 중 하나만 출력해.
-
-긍정
-부정
-중립
-
-리뷰: {content}
-"""
-
-        response = client.responses.create(
-            model="gpt-5-mini",
-            input=prompt,
-            # max_output_tokens=16
-            max_output_tokens=256,  # ✅ 충분히 크게
-        )
-        print(response)
-        # 1) output_text가 문자열이면 사용
-        raw = getattr(response, "output_text", None)
-        if isinstance(raw, str) and raw.strip():
-            match = re.search(r"(긍정|부정|중립)", raw)
-            if match:
-                return match.group(1)
-
-        # 2) output 배열이 있으면 파싱
-        output = getattr(response, "output", None)
-        if output:
-            for item in output:
-                content_list = getattr(item, "content", None)
-                if content_list:
-                    for c in content_list:
-                        if getattr(c, "type", None) == "output_text":
-                            raw = getattr(c, "text", "")
-                            match = re.search(r"(긍정|부정|중립)", raw)
-                            if match:
-                                return match.group(1)
-        return "분석 실패 (빈 응답)"
-
-    except Exception as e:
-        return f"분석 오류 ({str(e)})"
+from sentiment import analyze_sentiment
 
 from sqlalchemy import func
 
