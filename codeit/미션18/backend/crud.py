@@ -79,8 +79,20 @@ def get_reviews(db: Session, movie_id: int):
     return db.query(models.Review).filter(models.Review.movie_id == movie_id).all()
 
 def create_review(db: Session, movie_id: int, review: schemas.ReviewCreate):
+    from datetime import datetime
     sentiment = analyze_sentiment(review.content)
-    db_review = models.Review(**review.model_dump(), movie_id=movie_id, sentiment=sentiment)
+    
+    # 기본값 보장
+    author = review.author if review.author else "익명"
+    created_at = review.created_at if review.created_at else datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    db_review = models.Review(
+        **review.model_dump(exclude={"author", "created_at"}),
+        movie_id=movie_id,
+        sentiment=sentiment,
+        author=author,
+        created_at=created_at
+    )
     db.add(db_review)
     db.commit()
     db.refresh(db_review)

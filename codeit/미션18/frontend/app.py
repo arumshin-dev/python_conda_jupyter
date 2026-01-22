@@ -33,69 +33,79 @@ def get_movie_detail(movie_id):
         return None
 
 # --- Main Logic ---
-st.title("🍿 영화 감상 및 리뷰 홈")
+# st.title("🍿 영화 감상 및 리뷰 홈")
 
 # --- [페이지 1] 영화 감상 및 리뷰 ---
+def show_movie_detail(movie_id):
+    st.markdown("### 🎬 영화 상세 정보")
+    movie = get_movie_detail(movie_id) # Changed from get_movie to get_movie_detail
+    if not movie:
+        st.error("영화 정보를 찾을 수 없습니다.")
+        if st.button("목록으로"):
+            del st.query_params["movie_id"]
+            st.rerun()
+        return
+
+    # 좌측 포스터 / 우측 상세 정보 (컴팩트 레이아웃)
+    col1, col2 = st.columns([1, 2])
+    with col1:
+        if movie.get('poster_url'):
+            try:
+                resp = requests.get(movie['poster_url'], timeout=3)
+                if resp.status_code == 200:
+                    st.image(resp.content, use_container_width=True)
+            except:
+                st.warning("이미지 로드 실패")
+    
+    with col2:
+        st.subheader(movie['title'])
+        st.markdown(f"**감독**: {movie.get('director', '-')}")
+        st.markdown(f"**장르**: {movie.get('genre', '-')}")
+        st.markdown(f"**개봉**: {movie.get('release_date', '-')}")
+        st.markdown(f"#### ⭐ **{movie.get('average_rating', 0.0)}** / 10.0")
+        if st.button("⬅️ 목록으로", use_container_width=True):
+            del st.query_params["movie_id"]
+            st.rerun()
+
+    st.divider()
+    
+    # 리뷰 섹션 (최대한 세로 길이를 압축)
+    reviews = movie.get('reviews', [])
+    st.markdown(f"#### 💬 리뷰 ({len(reviews)})")
+    
+    with st.expander("➕ 새 리뷰 작성"):
+        with st.form("review_form", clear_on_submit=True):
+            author = st.text_input("닉네임", "익명")
+            content = st.text_area("내용")
+            rating = st.slider("평점", 0.0, 10.0, 8.0, step=0.5)
+            if st.form_submit_button("등록"): # Changed from st.form_submit_url_button to st.form_submit_button
+                if content:
+                    res = requests.post(f"{BACKEND_URL}/movies/{movie_id}/reviews", 
+                                     json={"author": author, "content": content, "rating": rating, "created_at": ""})
+                    if res.status_code == 200:
+                        st.success("리뷰 등록 완료!")
+                        st.rerun()
+                else: st.warning("내용을 입력하세요")
+
+    # 리뷰 리스트 (카드 스타일로 압축)
+    for r in reversed(reviews):
+        sentiment_color = "blue" if r['sentiment'] == "긍정" else "red" if r['sentiment'] == "부정" else "gray"
+        with st.container(border=True):
+            c1, c2 = st.columns([4, 1])
+            with c1:
+                st.markdown(f"**{r['author']}** <small>({r['created_at'][:10]})</small>", unsafe_allow_html=True)
+                st.markdown(f"{r['content']}")
+            with c2:
+                st.markdown(f"⭐ {r['rating']}")
+                st.markdown(f"<span style='color:{sentiment_color}; font-weight:bold;'>{r['sentiment']}</span>", unsafe_allow_html=True)
+
 def show_home():
     # --- 상세 보기 모드 ---
     params = st.query_params
     selected_id = int(params["movie_id"]) if "movie_id" in params else None
 
     if selected_id:
-        movie = get_movie_detail(selected_id)
-        if movie:
-            col_img, col_txt = st.columns([1, 2])
-            with col_img:
-                if movie.get('poster_url'):
-                    try:
-                        resp = requests.get(movie['poster_url'])
-                        if resp.status_code == 200: 
-                            st.image(resp.content, use_container_width=True)
-                        else: st.warning("이미지 오류")
-                    except: st.warning("이미지 없음")
-            with col_txt:
-                st.header(movie['title'])
-                st.subheader(f"⭐ {movie.get('average_rating', 0.0)} | 🎬 {movie['director']} | 🎭 {movie['genre']}")
-                st.caption(f"개봉일: {movie.get('release_date', '미정')}")
-                if st.button("⬅️ 목록으로"):
-                    st.query_params.clear()
-                    st.rerun()
-
-            st.divider()
-            st.subheader(f"💬 리뷰 ({len(movie.get('reviews', []))})")
-            
-            with st.expander("✍️ 리뷰 남기기"):
-                with st.form("add_review"):
-                    auth = st.text_input("작성자")
-                    cont = st.text_area("내용")
-                    rate = st.slider("평점", 0.0, 10.0, 8.0, 0.5)
-                    if st.form_submit_button("등록"):
-                        now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-                        requests.post(f"{BACKEND_URL}/movies/{selected_id}/reviews", 
-                                      json={"author": auth, "content": cont, "rating": rate, "created_at": now})
-                        st.rerun()
-
-            for rev in reversed(movie.get('reviews', [])):
-                with st.container(border=True):
-                    r1, r2, r3 = st.columns([1, 4, 1])
-                    r1.write(f"**{rev['author']}**")
-                    r1.caption(rev['created_at'])
-                    color = "green" if "긍정" in rev.get('sentiment', '') else ("red" if "부정" in rev.get('sentiment', '') else "gray")
-                    r2.write(rev['content'])
-                    r2.markdown(f"⭐ {rev['rating']} | <span style='color:{color}'>AI: {rev['sentiment']}</span>", unsafe_allow_html=True)
-                    with r3:
-                        if st.button("🗑️", key=f"del_{rev['id']}"):
-                            requests.delete(f"{BACKEND_URL}/reviews/{rev['id']}")
-                            st.rerun()
-                        if st.toggle("✏️", key=f"ed_{rev['id']}"):
-                            with st.form(f"f_{rev['id']}"):
-                                n_auth = st.text_input("작성자", value=rev['author'])
-                                n_cont = st.text_area("내용", value=rev['content'])
-                                n_rate = st.slider("평점", 0.0, 10.0, float(rev['rating']), 0.5)
-                                if st.form_submit_button("수정"):
-                                    requests.put(f"{BACKEND_URL}/reviews/{rev['id']}", 
-                                                 json={"author": n_auth, "content": n_cont, "rating": n_rate, "created_at": rev['created_at']})
-                                    st.rerun()
+        show_movie_detail(selected_id)
     else:
         # --- [목록 페이지] ---
         st.header("🍿 영화 감상실")
