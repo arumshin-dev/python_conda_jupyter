@@ -9,7 +9,7 @@ from transformers import pipeline
 # .env 파일 로드 (현재 디렉토리부터 상위 디렉토리까지 검색)
 env_path = os.path.join(os.path.dirname(__file__), ".env")
 if not os.path.exists(env_path):
-    # 상위 디렉토리 확인 (mission18_project/.env 대응)
+    # 상위 디렉토리 확인 (project/.env 대응)
     env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".env")
 
 load_dotenv(dotenv_path=env_path)
@@ -37,7 +37,13 @@ def get_ml_pipeline():
     return _sentiment_pipeline
 
 def ml_sentiment(text: str):
-    """로컬 모델 분석 (1-5 star -> 긍정/부정/중립)"""
+    """
+    로컬 모델 분석 (BERT 1-5성 -> 긍정/부정/중립 변환)
+    사용자 0-10점 체계 대응:
+    - 4-5성 (긍정): 약 7-10점에 해당
+    - 3성 (중립): 약 5-6점에 해당
+    - 1-2성 (부정): 약 0-4점에 해당
+    """
     pipe = get_ml_pipeline()
     if not pipe:
         return "중립", 0.0
@@ -66,9 +72,9 @@ def analyze_sentiment(content: str):
             prompt = f"영화 리뷰 감성 분석. 무조건 '긍정', '부정', '중립' 중 하나만 출력.\n\n리뷰: {content}\n결과:"
             
             response = client.responses.create(
-                model="gpt-4o-mini",
+                model="gpt-5-mini",
                 input=prompt,
-                max_output_tokens=10
+                max_output_tokens=64
             )
 
             raw = getattr(response, "output_text", None)
@@ -87,7 +93,8 @@ def analyze_sentiment(content: str):
                 match = re.search(r"(긍정|부정|중립)", raw)
                 if match:
                     return match.group(1)
-        except:
+        except Exception as e:
+            print(f"GPT 분석 오류: {e}")
             pass 
 
     return ml_label
