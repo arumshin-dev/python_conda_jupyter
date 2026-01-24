@@ -30,11 +30,15 @@ else:
         columns=['A', 'B', 'C']
     )
 
+if 'Date' in df.columns:
+    df['Date'] = pd.to_datetime(df['Date'])  # 문자열을 날짜로 변환
+    df = df.set_index('Date')  # Date를 인덱스로 설정
 columns = df.columns
 selected_columns = []
 for col in columns:
     if st.sidebar.checkbox(f"{col} 컬럼 표시", value=True):
         selected_columns.append(col)
+
 # [레이아웃] 다중 컬럼으로 화면 분할
 col1, col2 = st.columns(2)
 
