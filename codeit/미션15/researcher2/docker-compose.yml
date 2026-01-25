@@ -19,7 +19,7 @@ services:
       - ./inference.ipynb:/home/jovyan/work/inference.ipynb
     # [핵심] 컨테이너가 뜨자마자 패키지를 연구자 1의 모델에 맞춰 업데이트함
     command: >
-      sh -c "pip install numpy==2.0.2 scikit-learn==1.6.1 && start-notebook.sh"
+      sh -c "pip install numpy==1.26.4 scikit-learn==1.6.1 && start-notebook.sh"
     depends_on:
       - researcher1-task
 
