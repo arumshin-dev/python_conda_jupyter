@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  # 연구자 1의 이미지: 실행되면 train.py가 돌아가며 model.pkl을 생성함
+  researcher1-task:
+    image: a0323/m15_1:v1
+    container_name: researcher1
+    volumes:
+      - shared-volume:/app/output # 모델이 저장되는 경로
+
+  # 연구자 2의 이미지: Jupyter Notebook 환경
+  researcher2-jupyter:
+    image: jupyter/scipy-notebook:python-3.10
+    container_name: researcher2
+    ports:
+      - "8888:8888"
+    volumes:
+      - shared-volume:/home/jovyan/work/shared # 연구자 1의 결과물을 받는 경로
+      - ./inference.ipynb:/home/jovyan/work/inference.ipynb
+    # [핵심] 컨테이너가 뜨자마자 패키지를 연구자 1의 모델에 맞춰 업데이트함
+    command: >
+      sh -c "pip install numpy==2.0.2 scikit-learn==1.6.1 && start-notebook.sh"
+    depends_on:
+      - researcher1-task
+
+volumes:
+  shared-volume:

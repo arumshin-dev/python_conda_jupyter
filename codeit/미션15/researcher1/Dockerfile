@@ -13,8 +13,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY train.py .
 COPY train.csv .
 COPY test.csv .
+
 # 5. 모델 저장 디렉토리 생성
 RUN mkdir -p /app/output
-# 5. 학습 실행
+
+# 6. 학습 실행
 CMD ["python", "train.py"]
 

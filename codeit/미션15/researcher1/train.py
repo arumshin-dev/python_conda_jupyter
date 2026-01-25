@@ -39,5 +39,8 @@ rmse = np.sqrt(mean_squared_error(y_val, y_pred))
 print(f"RMSE: {rmse:.4f}")
 
 # 8. Save model
-joblib.dump(model, "model.pkl")
-print("model.pkl saved successfully")
+# 반드시 /app/output 폴더에 저장해야 함
+joblib.dump(model, '/app/output/model.pkl') 
+df.to_csv('/app/output/train.csv', index=False)
+test = pd.read_csv("test.csv")
+test.to_csv('/app/output/test.csv', index=False)
