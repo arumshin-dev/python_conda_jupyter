@@ -5,6 +5,7 @@ services:
   researcher1-task:
     image: a0323/m15_1:v1
     container_name: researcher1
+    user: "1000:100" # jovyan과 동일한 UID/GID
     volumes:
       - shared-volume:/app/output # 모델이 저장되는 경로
 
@@ -12,6 +13,7 @@ services:
   researcher2-jupyter:
     image: jupyter/scipy-notebook:python-3.10
     container_name: researcher2
+    user: "1000:100" # 동일하게 맞춤
     ports:
       - "8888:8888"
     volumes:
@@ -19,7 +21,7 @@ services:
       - ./inference.ipynb:/home/jovyan/work/inference.ipynb
     # [핵심] 컨테이너가 뜨자마자 패키지를 연구자 1의 모델에 맞춰 업데이트함
     command: >
-      sh -c "pip install numpy==1.26.4 scikit-learn==1.6.1 && start-notebook.sh"
+      sh -c "pip install numpy==1.26.4 scikit-learn==1.6.1 pandas==2.2.0 && start-notebook.sh"
     depends_on:
       - researcher1-task
 
