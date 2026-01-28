@@ -11,7 +11,7 @@ services:
 
   # 연구자 2의 이미지: Jupyter Notebook 환경
   researcher2-jupyter:
-    image: jupyter/scipy-notebook:python-3.10
+    build: .
     container_name: researcher2
     user: "1000:100" # 동일하게 맞춤
     ports:
@@ -19,9 +19,6 @@ services:
     volumes:
       - shared-volume:/home/jovyan/work/shared # 연구자 1의 결과물을 받는 경로
       - ./inference.ipynb:/home/jovyan/work/inference.ipynb
-    # [핵심] 컨테이너가 뜨자마자 패키지를 연구자 1의 모델에 맞춰 업데이트함
-    command: >
-      sh -c "pip install numpy==1.26.4 scikit-learn==1.6.1 pandas==2.2.0 && start-notebook.sh"
     depends_on:
       - researcher1-task
 
