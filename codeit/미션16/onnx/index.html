@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <title>MNIST ONNX JS Inference</title>
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
+</head>
+
+<body>
+    <h2>MNIST ONNX Inference (JavaScript)</h2>
+
+    <!-- 기본 이미지 -->
+    <img id="inputImage" src="image1.png" width="140" />
+    <button onclick="predict('inputImage', 'result')">Run Inference (Default)</button>
+    <p id="result"></p>
+
+    <!-- 업로드 이미지 -->
+    <input type="file" accept="image/*" onchange="loadImage(event)" />
+    <br><br>
+    <img id="uploadedImage" width="140" />
+    <br><br>
+    <button onclick="predict('uploadedImage', 'result1')">Run Inference (Uploaded)</button>
+    <p id="result1"></p>
+
+    <script>
+        let session = null;
+
+        // 모델은 한 번만 로드
+        async function loadModel() {
+            session = await ort.InferenceSession.create("mnist_cnn.onnx");
+            console.log("ONNX model loaded");
+        }
+        loadModel();
+
+        // 업로드 이미지 표시
+        function loadImage(event) {
+            const img = document.getElementById("uploadedImage");
+            img.src = URL.createObjectURL(event.target.files[0]);
+        }
+
+        // 공통 예측 함수
+        async function predict(imageId, resultId) {
+            if (!session) {
+                alert("Model not loaded yet!");
+                return;
+            }
+
+            const img = document.getElementById(imageId);
+            if (!img.src) {
+                alert("No image found!");
+                return;
+            }
+
+            const canvas = document.createElement("canvas");
+            canvas.width = 28;
+            canvas.height = 28;
+            const ctx = canvas.getContext("2d");
+
+            // resize + grayscale
+            ctx.drawImage(img, 0, 0, 28, 28);
+            const imageData = ctx.getImageData(0, 0, 28, 28).data;
+
+            const input = new Float32Array(1 * 1 * 28 * 28);
+            for (let i = 0; i < 28 * 28; i++) {
+                input[i] = imageData[i * 4] / 255.0; // R 채널만 사용
+            }
+
+            const tensor = new ort.Tensor("float32", input, [1, 1, 28, 28]);
+
+            const results = await session.run({ input: tensor });
+            const output = results.output.data;
+
+            const predicted = output.indexOf(Math.max(...output));
+            document.getElementById(resultId).innerText =
+                "Predicted Digit: " + predicted;
+        }
+    </script>
+</body>
+
+</html>
